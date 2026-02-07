@@ -2,24 +2,56 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
-const PORT = 5000;
-
 app.use(cors());
 app.use(express.json());
 
-// test route
-app.get("/", (req, res) => {
-  res.send("Backend is running 🚀");
-});
+// Fake database
+let users = [];
+let trackedData = [];
 
-// dummy API
-app.get("/api/data", (req, res) => {
+// ✅ LOGIN API
+app.post("/api/login", (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email required" });
+  }
+
+  users.push({ email, time: new Date() });
+
   res.json({
     success: true,
-    data: [{ id: 1, name: "Test User", email: "test@mail.com" }],
+    message: "Login successful",
+    email,
   });
 });
 
+// ✅ GET DASHBOARD DATA
+app.get("/api/data", (req, res) => {
+  res.json({
+    success: true,
+    totalUsers: users.length,
+    trackedData,
+  });
+});
+
+// ✅ TRACK FORM DATA
+app.post("/api/track", (req, res) => {
+  const data = {
+    ...req.body,
+    time: new Date(),
+  };
+
+  trackedData.push(data);
+
+  res.json({
+    success: true,
+    message: "Data tracked successfully",
+  });
+});
+
+// SERVER START
+const PORT = 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Backend running at http://localhost:${PORT}`);
 });
