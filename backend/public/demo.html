@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Demo Contact Form</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        background: #f0f4f8;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+      }
+
+      .container {
+        background: #ffffff;
+        padding: 40px 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+        text-align: center;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 30px;
+        font-weight: 700;
+      }
+
+      input {
+        display: block;
+        width: 100%;
+        padding: 12px 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      input:focus {
+        border-color: #4f46e5;
+        outline: none;
+        box-shadow: 0 0 5px rgba(79, 70, 229, 0.3);
+      }
+
+      button {
+        background: linear-gradient(90deg, #4f46e5, #8b5cf6);
+        color: #fff;
+        border: none;
+        padding: 12px 0;
+        width: 100%;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+      }
+
+      .footer {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #666;
+      }
+
+      @media (max-width: 500px) {
+        .container {
+          padding: 30px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Contact Us</h1>
+      <form id="contactForm">
+        <input type="text" name="name" placeholder="Your Name" required />
+        <input type="email" name="email" placeholder="Your Email" required />
+        <input type="text" name="message" placeholder="message" required />
+
+        <button type="submit">Submit</button>
+      </form>
+      <div class="footer">Demo Tracker Form</div>
+    </div>
+
+    <!-- Set API key before loading tracker -->
+    <script>
+      window.dataPulseKey = "pipsn2ggsg";
+    </script>
+
+    <!-- Load tracker script -->
+    <script src="http://localhost:5000/tracker.js"></script>
+  </body>
+</html>
