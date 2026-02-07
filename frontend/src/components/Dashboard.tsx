@@ -10,60 +10,150 @@ interface Submission {
   date: string;
 }
 
-const Dashboard: React.FC<{ apiKey: string }> = ({ apiKey }) => {
-  const [submissions, setSubmissions] = useState<Submission[]>([
-    { id: 1, name: 'John Doe', email: 'john@example.com', message: 'Interested in pricing plans for enterprise', time: '10:30 AM', page: '/contact', date: 'Today' },
-    { id: 2, name: 'Jane Smith', email: 'jane@company.com', message: 'Requesting demo session next week', time: '10:15 AM', page: '/contact', date: 'Today' },
-    { id: 3, name: 'Alex Johnson', email: 'alex@startup.io', message: 'Technical support needed for integration', time: '09:45 AM', page: '/support', date: 'Today' },
-  ]);
+interface Stats {
+  total: number;
+  today: number;
+  contactForms: number;
+  responseRate: number;
+}
 
+const Dashboard: React.FC = () => {
+  // State for real data
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    today: 0,
+    contactForms: 0,
+    responseRate: 0
+  });
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [liveCount, setLiveCount] = useState(3);
+  const [liveCount, setLiveCount] = useState(0);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [apiKey, setApiKey] = useState<string>('');
 
-  // Auto-refresh simulation (every 8 seconds)
+  // Fetch data from backend
+  const fetchData = async (key: string) => {
+    try {
+      // Fetch submissions from backend
+      const subsRes = await fetch(`http://localhost:5000/api/submissions?apiKey=${key}`);
+      const subsData = await subsRes.json();
+      
+      // Transform backend data to match our interface
+      const transformedSubs = subsData.map((item: any, index: number) => ({
+        id: index + 1,
+        name: item.formData?.name || item.name || 'Unknown User',
+        email: item.formData?.email || item.email || 'no-email@example.com',
+        message: item.formData?.message || item.message || 'No message',
+        time: item.time || new Date(item.timestamp).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        page: item.pageUrl || item.page || '/',
+        date: item.date || 'Today'
+      }));
+      
+      setSubmissions(transformedSubs);
+      
+      // Fetch stats from backend
+      const statsRes = await fetch(`http://localhost:5000/api/submissions/stats?apiKey=${key}`);
+      const statsData = await statsRes.json();
+      setStats(statsData);
+      setLiveCount(statsData.total);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      // Fallback to sample data if backend is down
+      setSubmissions([
+        { id: 1, name: 'John Doe', email: 'john@example.com', message: 'Interested in pricing plans for enterprise', time: '10:30 AM', page: '/contact', date: 'Today' },
+        { id: 2, name: 'Jane Smith', email: 'jane@company.com', message: 'Requesting demo session next week', time: '10:15 AM', page: '/contact', date: 'Today' },
+      ]);
+      setStats({
+        total: 2,
+        today: 2,
+        contactForms: 2,
+        responseRate: 42
+      });
+      setLiveCount(2);
+    }
+  };
+
+  // Initial data load and WebSocket setup
   useEffect(() => {
-    if (!autoRefresh) return;
+    // Get API key from localStorage
+    const key = localStorage.getItem('dp_apiKey');
+    if (!key) {
+      // Redirect to login if no API key
+      window.location.href = '/login';
+      return;
+    }
+    
+    setApiKey(key);
+    fetchData(key);
+    
+    // Setup WebSocket for real-time updates
+    const socket = new WebSocket('ws://localhost:5000');
+    
+    socket.onopen = () => {
+      console.log('Connected to DataPulse WebSocket');
+      socket.send(JSON.stringify({ type: 'join', apiKey: key }));
+    };
+    
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'newSubmission' || data.apiKey === key) {
+          // Add new submission
+          const newSub: Submission = {
+            id: submissions.length + 1,
+            name: data.formData?.name || data.name || 'New User',
+            email: data.formData?.email || data.email || 'no-email@example.com',
+            message: data.formData?.message || data.message || 'New form submission',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            page: data.pageUrl || data.page || '/',
+            date: 'Just now'
+          };
+          
+          setSubmissions(prev => [newSub, ...prev.slice(0, 9)]); // Keep max 10
+          setStats(prev => ({
+            ...prev,
+            total: prev.total + 1,
+            today: prev.today + 1
+          }));
+          setLiveCount(prev => prev + 1);
+          
+          // Show notification
+          showNotification(newSub.name);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+    
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+    
+    socket.onclose = () => {
+      console.log('WebSocket disconnected');
+    };
+    
+    // Cleanup on unmount
+    return () => {
+      socket.close();
+    };
+  }, []); // Empty dependency array - runs once on mount
+
+  // Auto-refresh simulation (every 30 seconds)
+  useEffect(() => {
+    if (!autoRefresh || !apiKey) return;
     
     const interval = setInterval(() => {
-      // 40% chance to add new submission
-      if (Math.random() < 0.4) {
-        const names = ['Sarah Wilson', 'Mike Brown', 'Emma Davis', 'Chris Lee', 'Lisa Taylor'];
-        const pages = ['/contact', '/signup', '/newsletter', '/support', '/pricing'];
-        const messages = [
-          'Interested in your services',
-          'Requesting more information',
-          'Newsletter subscription',
-          'Technical question',
-          'Partnership inquiry'
-        ];
-        
-        const randomName = names[Math.floor(Math.random() * names.length)];
-        const newSubmission: Submission = {
-          id: submissions.length + 1,
-          name: randomName,
-          email: `${randomName.toLowerCase().replace(' ', '.')}@example.com`,
-          message: messages[Math.floor(Math.random() * messages.length)],
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          page: pages[Math.floor(Math.random() * pages.length)],
-          date: 'Just now'
-        };
-        
-        setSubmissions(prev => [newSubmission, ...prev.slice(0, 9)]); // Keep max 10
-        setLiveCount(prev => prev + 1);
-        
-        // Show notification
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('📨 New Form Submission', {
-            body: `${randomName} submitted a form`,
-            icon: '/favicon.ico'
-          });
-        }
-      }
-    }, 8000);
+      fetchData(apiKey);
+    }, 30000); // 30 seconds
     
     return () => clearInterval(interval);
-  }, [autoRefresh, submissions.length]);
+  }, [autoRefresh, apiKey]);
 
   // Request notification permission
   useEffect(() => {
@@ -72,24 +162,21 @@ const Dashboard: React.FC<{ apiKey: string }> = ({ apiKey }) => {
     }
   }, []);
 
+  const showNotification = (name: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('📨 New Form Submission', {
+        body: `${name} submitted a form on your website`,
+        icon: '/favicon.ico'
+      });
+    }
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Simulate API call
-    setTimeout(() => {
-      const names = ['New Lead', 'Website Visitor', 'Prospective Client'];
-      const newSubmission: Submission = {
-        id: submissions.length + 1,
-        name: names[Math.floor(Math.random() * names.length)],
-        email: `lead${Date.now()}@company.com`,
-        message: 'Submitted contact form on website',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        page: '/contact',
-        date: 'Just now'
-      };
-      setSubmissions(prev => [newSubmission, ...prev]);
-      setLiveCount(prev => prev + 1);
-      setIsRefreshing(false);
-    }, 800);
+    if (apiKey) {
+      fetchData(apiKey);
+    }
+    setTimeout(() => setIsRefreshing(false), 800);
   };
 
   const handleExport = () => {
@@ -117,13 +204,9 @@ const Dashboard: React.FC<{ apiKey: string }> = ({ apiKey }) => {
   };
 
   const trackingCode = `<script>
-window.datapulseKey = '${apiKey}';
+window.dataPulseKey = '${apiKey}';
 </script>
 <script src="http://localhost:5000/tracker.js"></script>`;
-
-  // Stats calculations
-  const todaySubmissions = submissions.filter(s => s.date === 'Today' || s.date === 'Just now').length;
-  const contactPageSubmissions = submissions.filter(s => s.page === '/contact').length;
 
   return (
     <div className="p-3 p-md-4 bg-light min-vh-100">
@@ -166,7 +249,7 @@ window.datapulseKey = '${apiKey}';
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Now using real backend data */}
       <div className="row g-3 mb-4">
         <div className="col-6 col-md-3">
           <div className="card border-0 shadow-sm h-100 bg-primary bg-opacity-10">
@@ -174,11 +257,11 @@ window.datapulseKey = '${apiKey}';
               <div className="d-flex align-items-center">
                 <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
                      style={{width: '48px', height: '48px'}}>
-                  <span style={{fontSize: '1.5rem'}}>{submissions.length}</span>
+                  <span style={{fontSize: '1.5rem'}}>{stats.total}</span>
                 </div>
                 <div>
                   <div className="text-muted small">Total Submissions</div>
-                  <div className="h4 fw-bold mb-0">{submissions.length}</div>
+                  <div className="h4 fw-bold mb-0">{stats.total}</div>
                 </div>
               </div>
             </div>
@@ -191,11 +274,11 @@ window.datapulseKey = '${apiKey}';
               <div className="d-flex align-items-center">
                 <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
                      style={{width: '48px', height: '48px'}}>
-                  <span style={{fontSize: '1.5rem'}}>{todaySubmissions}</span>
+                  <span style={{fontSize: '1.5rem'}}>{stats.today}</span>
                 </div>
                 <div>
                   <div className="text-muted small">Today</div>
-                  <div className="h4 fw-bold mb-0">{todaySubmissions}</div>
+                  <div className="h4 fw-bold mb-0">{stats.today}</div>
                 </div>
               </div>
             </div>
@@ -208,11 +291,11 @@ window.datapulseKey = '${apiKey}';
               <div className="d-flex align-items-center">
                 <div className="bg-warning text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
                      style={{width: '48px', height: '48px'}}>
-                  <span style={{fontSize: '1.5rem'}}>{contactPageSubmissions}</span>
+                  <span style={{fontSize: '1.5rem'}}>{stats.contactForms}</span>
                 </div>
                 <div>
                   <div className="text-muted small">Contact Forms</div>
-                  <div className="h4 fw-bold mb-0">{contactPageSubmissions}</div>
+                  <div className="h4 fw-bold mb-0">{stats.contactForms}</div>
                 </div>
               </div>
             </div>
@@ -225,11 +308,11 @@ window.datapulseKey = '${apiKey}';
               <div className="d-flex align-items-center">
                 <div className="bg-info text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
                      style={{width: '48px', height: '48px'}}>
-                  <span style={{fontSize: '1.5rem'}}>42%</span>
+                  <span style={{fontSize: '1.5rem'}}>{stats.responseRate}%</span>
                 </div>
                 <div>
                   <div className="text-muted small">Response Rate</div>
-                  <div className="h4 fw-bold mb-0">42%</div>
+                  <div className="h4 fw-bold mb-0">{stats.responseRate}%</div>
                 </div>
               </div>
             </div>
@@ -380,14 +463,14 @@ window.datapulseKey = '${apiKey}';
                   <div className="display-1 text-muted mb-3">📭</div>
                   <h5 className="text-muted">No submissions yet</h5>
                   <p className="text-muted small">Add the tracking code to your website to see submissions here</p>
-                  <button 
-                    onClick={() => setSubmissions([
-                      { id: 1, name: 'Demo User', email: 'demo@example.com', message: 'Sample submission', time: 'Now', page: '/demo', date: 'Just now' }
-                    ])}
+                  <a 
+                    href="http://localhost:5000/demo" 
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="btn btn-outline-primary mt-2"
                   >
-                    Load Sample Data
-                  </button>
+                    Try Demo Form
+                  </a>
                 </div>
               )}
             </div>

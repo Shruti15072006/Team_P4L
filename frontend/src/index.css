@@ -69,3 +69,17 @@ code {
 .table-responsive::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+/* Add these styles */
+.min-vh-100 { min-height: 100vh; }
+.new-submission { animation: highlight 2s ease; }
+
+@keyframes highlight {
+  0% { background-color: rgba(25, 135, 84, 0.1); }
+  100% { background-color: transparent; }
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
