@@ -11,3 +11,61 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* Pulse animation for LIVE badge */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.live-badge {
+  animation: pulse 2s infinite;
+}
+
+/* Highlight new rows */
+.new-row {
+  animation: highlight 3s ease-out;
+}
+
+@keyframes highlight {
+  0% { background-color: #d4edda; }
+  100% { background-color: transparent; }
+}
+/* Animations */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+@keyframes highlight {
+  0% { background-color: rgba(25, 135, 84, 0.2); }
+  100% { background-color: transparent; }
+}
+
+.new-submission {
+  animation: highlight 3s ease-out;
+}
+
+.very-small {
+  font-size: 0.75rem;
+}
+
+/* Custom scrollbar */
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
